@@ -1,0 +1,45 @@
+import java.io.FileWriter;
+import java.io.IOException;
+import java.security.SecureRandom;
+
+public class OTPGenerator {
+
+    private static final String CHAR_SET = "ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz123456789";
+
+    // Generate OTP that starts with '5' and is 32 characters long
+    public static String generateOTP(int length) {
+        if (length < 1) throw new IllegalArgumentException("Length must be at least 1");
+
+        SecureRandom random = new SecureRandom();
+        StringBuilder otp = new StringBuilder(length);
+        otp.append('5'); // First character is always '5'
+
+        for (int i = 1; i < length; i++) {
+            int index = random.nextInt(CHAR_SET.length());
+            otp.append(CHAR_SET.charAt(index));
+        }
+
+        return otp.toString();
+    }
+
+    // Save OTP to file by appending
+    public static void saveOTPToFile(String otp, String filename) {
+        try (FileWriter writer = new FileWriter(filename, true)) { // 'true' = append mode
+            writer.write(otp + System.lineSeparator()); // Write OTP followed by newline
+            System.out.println("OTP saved to " + filename);
+        } catch (IOException e) {
+            System.err.println("Error saving OTP to file: " + e.getMessage());
+        }
+    }
+
+    public static void main(String[] args) {
+        int otpLength = 32;
+
+        // Example: Generate and store 5 OTPs
+        for (int i = 0; i < 5; i++) {
+            String otp = generateOTP(otpLength);
+            System.out.println("Generated OTP: " + otp);
+            saveOTPToFile(otp, "otp.txt");
+        }
+    }
+}
