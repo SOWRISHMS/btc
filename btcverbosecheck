@@ -1,0 +1,55 @@
+package org.example;
+
+import org.bouncycastle.asn1.sec.SECNamedCurves;
+import org.bouncycastle.asn1.x9.X9ECParameters;
+import org.bouncycastle.math.ec.ECPoint;
+import org.bouncycastle.math.ec.ECCurve;
+
+import java.math.BigInteger;
+
+public class check {
+
+    private static final X9ECParameters SECP256K1_PARAMS = SECNamedCurves.getByName("secp256k1");
+    private static final ECCurve CURVE = SECP256K1_PARAMS.getCurve();
+    private static final ECPoint G = SECP256K1_PARAMS.getG();
+
+    public static void main(String[] args) {
+        // Step 1: Private key in binary (256 bits)
+        String binaryPrivateKey = "110111001001100011100011111000011101110010000011111111111110000001011001100010010001000111010010001111100011101011101011110000011100001010001001110101111111001001011010101011011011000100011011000111111101101011110100111110010100011010010110010001001010111";
+        BigInteger privKey = new BigInteger(binaryPrivateKey, 2);
+        System.out.println("Private Key (binary):\n" + toBinaryStringFixed(privKey, 256));
+
+        // Step 2: Compute public key
+        ECPoint pubKeyPoint = G.multiply(privKey).normalize();
+        BigInteger x = pubKeyPoint.getAffineXCoord().toBigInteger();
+        BigInteger y = pubKeyPoint.getAffineYCoord().toBigInteger();
+
+        String pubKeyXBinary = toBinaryStringFixed(x, 256);
+        String pubKeyYBinary = toBinaryStringFixed(y, 256);
+
+        System.out.println("\nGenerated Public Key:");
+        System.out.println("x = " + pubKeyXBinary);
+        System.out.println("y = " + pubKeyYBinary);
+
+        // Step 3: Predefined public key (you can edit this)
+        String predefinedPubX = "1110111100111101101110000111000110111010000001111111010001111000100101010111111110100000000011101101011011111110011101000001111001111011111000100101011101000001011011010011001110110100001010100010100001001111011101001010101111100111110001011010011011111001"; // Replace with real value to test mismatch
+        String predefinedPubY ="1000110111111001100110101000110101001111011100000110111010111010001111100110010011100011000110011001110000011001101101111000110110010111000111111011010110010001111110100010100101110111110001001111101110111010001011010001011111101100110101101100000000011101"; // Replace with real value to test mismatch
+
+        // Step 4: Compare
+        boolean xMatch = pubKeyXBinary.equals(predefinedPubX);
+        boolean yMatch = pubKeyYBinary.equals(predefinedPubY);
+
+        System.out.println("\nComparison with predefined public key:");
+        System.out.println("X Match: " + xMatch);
+        System.out.println("Y Match: " + yMatch);
+        System.out.println("Result: " + (xMatch && yMatch ? "✅ Keys match" : "❌ Keys do not match"));
+    }
+
+    // Pads binary string to fixed length (e.g., 256 bits)
+    public static String toBinaryStringFixed(BigInteger value, int bits) {
+        String binary = value.toString(2);
+        while (binary.length() < bits) binary = "0" + binary;
+        return binary;
+    }
+}
+
