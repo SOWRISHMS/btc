@@ -1,0 +1,121 @@
+package org.example;
+
+import org.bitcoinj.crypto.ECKey;
+import org.bouncycastle.asn1.sec.SECNamedCurves;
+import org.bouncycastle.asn1.x9.X9ECParameters;
+
+import org.bouncycastle.math.ec.ECCurve;
+import org.bouncycastle.math.ec.ECPoint;
+
+import java.math.BigInteger;
+
+public class BTCKeyGeneratorVerbose {
+
+    // Manually define CURVE and G using Bouncy Castle's standard secp256k1 parameters
+    private static final X9ECParameters SECP256K1_PARAMS = SECNamedCurves.getByName("secp256k1");
+    private static final ECCurve CURVE = SECP256K1_PARAMS.getCurve();
+    private static final ECPoint G = SECP256K1_PARAMS.getG();
+
+    public static void main(String[] args) {
+        System.out.println("--- Bitcoin Key Generation (Verbose) ---");
+
+        ECKey key = new ECKey();
+        BigInteger privKey = key.getPrivKey();
+        System.out.println("\nPrivate Key (k):\n" + privKey.toString(10));
+
+        ECPoint normalizedG = G.normalize();
+        System.out.println("\nGenerator Point (G):");
+        System.out.println("x = " + normalizedG.getAffineXCoord().toBigInteger().toString(10));
+        System.out.println("y = " + normalizedG.getAffineYCoord().toBigInteger().toString(10));
+
+        System.out.println("\n--- Scalar Multiplication Steps (P = k * G) ---");
+        ECPoint result = multiplyWithLogging(normalizedG, privKey);
+
+        ECPoint pubKey = result.normalize();
+        System.out.println("\nPublic Key (k * G):");
+        System.out.println("x = " + pubKey.getAffineXCoord().toBigInteger().toString(10));
+        System.out.println("y = " + pubKey.getAffineYCoord().toBigInteger().toString(10));
+
+        byte[] compressedPubKey = compressPublicKey(pubKey);
+        System.out.println("\nCompressed Public Key (binary): " + bytesToBinary(compressedPubKey));
+
+        System.out.println("\n--- End of Generation ---");
+    }
+    public static String bytesToBinary(byte[] bytes) {
+        StringBuilder sb = new StringBuilder();
+        for (byte b : bytes) {
+            sb.append(String.format("%8s", Integer.toBinaryString(b & 0xFF)).replace(' ', '0'));
+        }
+        return sb.toString();
+    }
+
+
+    public static ECPoint multiplyWithLogging(ECPoint G, BigInteger k) {
+        ECPoint result = CURVE.getInfinity(); // Starts as the point at infinity
+        ECPoint addend = G;
+        int bitLength = k.bitLength();
+
+        for (int i = bitLength - 1; i >= 0; i--) {
+            // Step 1: Always double the current result
+            result = result.twice().normalize();
+
+            System.out.println("Doubling (bit " + i + "):");
+            // CHECK HERE: Only print coordinates if not the point at infinity
+            if (result.isInfinity()) {
+                System.out.println("  Point is at infinity (O)");
+            } else {
+                System.out.println("  x = " + result.getAffineXCoord().toBigInteger().toString(2));
+                System.out.println("  y = " + result.getAffineYCoord().toBigInteger().toString(2));
+            }
+
+
+            // Step 2: If the current bit of k is 1, add G to the result
+            if (k.testBit(i)) {
+                result = result.add(addend).normalize();
+
+                System.out.println("Addition (bit " + i + "):");
+                // CHECK HERE: Only print coordinates if not the point at infinity
+                if (result.isInfinity()) {
+                    System.out.println("  Point is at infinity (O)");
+                } else {
+                    System.out.println("  x = " + result.getAffineXCoord().toBigInteger().toString(10));
+                    System.out.println("  y = " + result.getAffineYCoord().toBigInteger().toString(10));
+                }
+            }
+        }
+
+        return result;
+    }
+
+    public static byte[] compressPublicKey(ECPoint point) {
+        // Ensure the point is not infinity before attempting to get coordinates
+        if (point.isInfinity()) {
+            throw new IllegalArgumentException("Cannot compress point at infinity.");
+        }
+
+        BigInteger x = point.getAffineXCoord().toBigInteger();
+        BigInteger y = point.getAffineYCoord().toBigInteger();
+
+        byte prefix = (byte) (y.testBit(0) ? 0x03 : 0x02);
+
+        byte[] xBytes = x.toByteArray();
+
+        byte[] result = new byte[33];
+        result[0] = prefix;
+
+        if (xBytes.length > 32) {
+            System.arraycopy(xBytes, xBytes.length - 32, result, 1, 32);
+        } else {
+            System.arraycopy(xBytes, 0, result, 33 - xBytes.length, xBytes.length);
+        }
+        return result;
+    }
+
+    public static String bytesToHex(byte[] bytes) {
+        StringBuilder sb = new StringBuilder();
+        for (byte b : bytes) {
+            sb.append(String.format("%02x", b));
+        }
+        return sb.toString();
+    }
+}
